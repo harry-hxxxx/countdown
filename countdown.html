@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+
+<html>
+<head>
+<title>COUNTDOWN</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8"/> 
+<style>
+
+*{box-sizing:border-box}
+body{margin:0;font:Tahoma,Helvetica,Arial,'宋体',sans-serif;cursor:default;-webkit-user-select:none;-moz-user-select:none;-ms-user-select:none;user-select:none}
+.countdown{margin:1em;flex-flow:row wrap}
+.countdown,.countdown>div{display:flex;justify-content:center;align-items:flex-start;align-content:flex-start}
+.countdown>div{padding:1em;border:.5em solid;text-align:center;flex:0 0 700px;flex-flow:row wrap}
+.countdown>div>div{flex:1 0 100%}
+.countdown>div>.countdown-title{height:2em;font-weight:700;font-size:500%;line-height:2em}
+.countdown>div>.countdown-select>select,.countdown>div>.countdown-select>span,.countdown>div>.countdown-time>span{font-size:400%;line-height:2em}
+.countdown>div>.countdown-select>select{width:1.5em}
+.countdown>div>.countdown-select>select>option{font-size:50%}
+.countdown>div>.countdown-time>span{font-weight:700}
+.countdown>div>.countdown-btn{padding:1em 3em;line-height:3em;flex:1 0 50%}
+.countdown>div>.countdown-btn>div{width:100%;background-color:#4caf50;color:#fff;cursor:pointer;-webkit-transition-duration:.1s;transition-duration:.1s}
+.countdown>div>.countdown-btn>div:hover{box-shadow:0 9pt 1pc 0 rgba(0,0,0,.24),0 17px 50px 0 rgba(0,0,0,.19);-webkit-transform:scale(1.05);transform:scale(1.05);-ms-transform:scale(1.05)}
+.countdown>div>.countdown-btn>div:active{box-shadow:none;-webkit-transform:scale(.95);transform:scale(.95);-ms-transform:scale(.95)}
+.countdown>div>.countdown-btn.countdown-btn-reset>div{background-color:#555}
+.countdown>div>.countdown-btn.countdown-btn-pause>div{background-color:#f44336}
+
+</style>
+</head>
+<body>
+
+<div class="countdown">
+	<div>
+		<div class="countdown-title">COUNTDOWN</div>
+		<div class="countdown-select">
+			<select class="countdown-select-hour" onchange="init()">hour</select>
+			<span>&nbsp;:&nbsp;</span>
+			<select class="countdown-select-min" onchange="init()">min</select>
+			<span>&nbsp;:&nbsp;</span>
+			<select class="countdown-select-sec" onchange="init()">sec</select>
+		</div>
+		<div class="countdown-time">
+			<span class="countdown-time-hour">0</span><span>&nbsp;:&nbsp;</span>
+			<span class="countdown-time-min">00</span><span>&nbsp;:&nbsp;</span>
+			<span class="countdown-time-sec">00</span><span>&nbsp;.&nbsp;</span>
+			<span class="countdown-time-xms">00</span>
+		</div>
+		<div class="countdown-btn countdown-btn-run" onclick="run()"><div>START</div></div>
+		<div class="countdown-btn countdown-btn-reset" onclick="init()"><div>RESET</div></div>
+		<div class="countdown-btn countdown-btn-pause" onclick="pause()"><div>PAUSE</div></div>
+		<div class="countdown-btn countdown-btn-continue" onclick="run()"><div>CONTINUE</div></div>
+	<div>
+</div>
+
+<script type="text/javascript">
+
+(function(){
+
+	// scope of the app
+	var countdown = document.getElementsByClassName("countdown")[0];
+	
+	// remaining ms
+	var left_ms = 0;
+
+	// timer
+	var interval = null;
+
+	window.onload = function() {
+		prepare();
+	};
+
+	/*
+	*loop to create <option> tags
+	*/
+	prepare = function() {
+		var hour_selector = countdown.getElementsByClassName("countdown-select-hour")[0];
+		var min_selector = countdown.getElementsByClassName("countdown-select-min")[0];
+		var sec_selector = countdown.getElementsByClassName("countdown-select-sec")[0];
+		for (var i = 0; i <=59; i++){
+			if (i<24){
+				hour_option = document.createElement("option");
+				hour_option.value = i;
+				hour_option.innerHTML = format(i);
+				hour_selector.appendChild(hour_option);
+			}
+			min_option = document.createElement("option");
+			min_option.value = i;
+			min_option.innerHTML = format(i);
+			min_selector.appendChild(min_option);
+			if(i%10==0){
+				sec_option = document.createElement("option");
+				sec_option.value = i;
+				sec_option.innerHTML = format(i);
+				sec_selector.appendChild(sec_option);
+				if(i==30){
+					sec_option.selected=true;
+				}
+			}
+		}
+		init();
+	};
+
+	/*
+	*1. get value from selector
+	*2. print value
+	*/
+	init = function () {
+		clearInterval(interval);
+		toggle(countdown, class_arr, status_arr, 'ready');
+		left_ms = 0;
+		var hour = parseInt(countdown.getElementsByClassName("countdown-select-hour")[0].value);
+		var min = parseInt(countdown.getElementsByClassName("countdown-select-min")[0].value);
+		var sec = parseInt(countdown.getElementsByClassName("countdown-select-sec")[0].value);
+		print(hour, min, sec, 0);
+	};
+
+	/*
+	*1. get curent value
+	*2. call function tick
+	*3. set timer, call function tick each 10 ms
+	*/
+	run = function() {
+		clearInterval(interval);
+		toggle(countdown, class_arr, status_arr, 'running');
+		var hour = parseInt(countdown.getElementsByClassName("countdown-time-hour")[0].innerHTML);
+		var min = parseInt(countdown.getElementsByClassName("countdown-time-min")[0].innerHTML);
+		var sec = parseInt(countdown.getElementsByClassName("countdown-time-sec")[0].innerHTML);
+		var xms = parseInt(countdown.getElementsByClassName("countdown-time-xms")[0].innerHTML);
+		left_ms = (hour*3600+min*60+sec)*1000+xms*10;
+		tick();
+		interval = setInterval(tick,10);
+	};
+
+	/*
+	*1. if countdown to 0, stop the runing (clear timer, toggle display)
+	*2. do calculation
+	*3. set new value
+	*/
+	pause = function() {
+		clearInterval(interval);
+		toggle(countdown, class_arr, status_arr, 'pause');
+	};
+
+	/*
+	*1. if countdown to 0, stop the runing (clear timer, toggle display)
+	*2. do calculation
+	*3. set new value
+	*/
+	var tick = function() {
+		left_ms-=10;
+		if (left_ms < 0) {
+			clearInterval(interval);
+			toggle(countdown, class_arr, status_arr, 'stop');
+			return;
+		}
+		left_sec = left_ms / 1000;
+		var hour = Math.floor(left_sec/3600);
+		var min = Math.floor(left_sec%3600/60);
+		var sec = Math.floor(left_sec%3600%60);
+		var xms = Math.floor(left_sec%3600%60%1*100);
+		print(hour, min, sec, xms);
+	};
+
+	/*
+	*print the value
+	*/
+	var print = function(hour, min, sec, xms) {
+		countdown.getElementsByClassName("countdown-time-hour")[0].innerHTML = format(hour);
+		countdown.getElementsByClassName("countdown-time-min")[0].innerHTML = format(min);
+		countdown.getElementsByClassName("countdown-time-sec")[0].innerHTML = format(sec);
+		countdown.getElementsByClassName("countdown-time-xms")[0].innerHTML = format(xms);
+	};
+
+	/*
+	*reusable function
+	*format add 0 to number<10 (e.g. 1 -> 01, 9 -> 09)
+	*/
+	var format = function(v) {
+		if (v<10) {
+			v = "0" + v;
+		}
+		return v;
+	};
+
+	/*
+	*reusable function
+	*
+	*params:
+	*scope: tag that the scope want to toggle, please send <document> if you want to toggle in the whole page
+	*class_arr: array of class that want to toggle
+	*status_arr: 2d array, key: [status][index of class_arr], value: hidden or not for the class, 1 for show and 0 for hidden
+	*status: target status that want to change to
+	*
+	*1. define single time toggle function, add or remove hidden attribute of tags with that class name
+	*2. define reusable function array_contains_key to check if param status is in class_arr
+	*3. do loop, call single time toggle function sending class name one by one according to class_arr
+	*/
+	var toggle = function(scope, class_arr, status_arr, status){
+		/*
+		*single toggle function, toggle 1 class name each call
+		*/
+		var do_toggle = function(className, show) {
+			tag_arr = scope.getElementsByClassName(className);
+			for (var i = 0; i < tag_arr.length; i++){
+					tag_arr[i].hidden = !show;
+			}
+		}
+		/*
+		*reusable function, to check if str is an index of an array
+		*/
+		var array_contains_key = function(arr, str){
+			var b = false;
+			for (var a in arr){
+				if(a==str){b=true;}
+			}
+			return b;
+		}
+		if(class_arr.length>0 && class_arr.length==status_arr[status].length && array_contains_key(status_arr,status)){
+			for (var i = 0; i < class_arr.length; i++){
+				do_toggle(class_arr[i], status_arr[status][i]);
+			}
+		}
+	};
+
+	class_arr = ['countdown-select', 'countdown-time', 'countdown-btn-run', 'countdown-btn-pause', 'countdown-btn-continue', 'countdown-btn-reset'];
+	status_arr = new Array();
+	status_arr['ready'] = [1,0,1,0,0,0];
+	status_arr['running'] = [0,1,0,1,0,1];
+	status_arr['pause'] = [0,1,0,0,1,1];
+	status_arr['stop'] = [0,1,0,0,0,1];
+
+})();
+
+</script>
+
+</body>
+</html>
